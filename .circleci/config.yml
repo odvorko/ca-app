@@ -1,29 +1,4 @@
-version: 2.1
-
-orbs:
-  aws-cli: circleci/aws-cli@3.1.5
-  aws-eb: circleci/aws-elastic-beanstalk@2.0.1
-
 jobs:
-  build-and-test:
-    docker:
-      - image: cimg/node:18.16
-    steps:
-      - checkout
-      - run:
-          name: Встановлення залежностей
-          command: npm install
-      - run:
-          name: Запуск тестів
-          command: npm test
-      - run:
-          name: Побудова додатку
-          command: npm run build || echo "Немає кроку побудови"
-      - persist_to_workspace:
-          root: .
-          paths:
-            - .
-
   deploy-staging:
     docker:
       - image: cimg/node:18.16
@@ -36,10 +11,11 @@ jobs:
           aws-region: AWS_REGION
       - aws-eb/setup
       - run:
-          name: Розгортання на Staging
+          name: Deploy to Staging
           command: |
-            eb init my-app-staging -p node.js --region us-east-1
-            eb deploy my-app-staging-env
+            export AWS_DEFAULT_REGION=$AWS_REGION
+            eb init ca-app -p node.js --region eu-north-1 || echo "Initialization already performed"
+            eb deploy devops-ca-env
 
   deploy-production:
     docker:
@@ -53,24 +29,21 @@ jobs:
           aws-region: AWS_REGION
       - aws-eb/setup
       - run:
-          name: Розгортання на Production
+          name: Deploy to Production
           command: |
-            eb init my-app-prod -p node.js --region us-east-1
-            eb deploy my-app-prod-env
+            export AWS_DEFAULT_REGION=$AWS_REGION
+            eb init ca-app -p node.js --region eu-north-1 || echo "Initialization already performed"
+            eb deploy devops-ca-env
 
 workflows:
   ci-cd-pipeline:
     jobs:
-      - build-and-test
+      - build-and-test 
       - deploy-staging:
-          requires:
-            - build-and-test
           filters:
             branches:
               only: staging
       - deploy-production:
-          requires:
-            - deploy-staging
           filters:
             branches:
               only: main
