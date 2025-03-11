@@ -27,7 +27,12 @@ jobs:
       - attach_workspace:
           at: .
       - aws-cli/setup  
-      - aws-eb/setup
+      - run:
+          name: Install EB CLI
+          command: |
+            sudo apt-get update && sudo apt-get install -y python3-pip
+            pip3 install awsebcli --upgrade --user
+            export PATH=~/.local/bin:$PATH
       - run:
           name: Deploy to Staging
           command: |
@@ -42,7 +47,12 @@ jobs:
       - attach_workspace:
           at: .
       - aws-cli/setup
-      - aws-eb/setup
+      - run:
+          name: Install EB CLI
+          command: |
+            sudo apt-get update && sudo apt-get install -y python3-pip
+            pip3 install awsebcli --upgrade --user
+            export PATH=~/.local/bin:$PATH
       - run:
           name: Deploy to Production
           command: |
