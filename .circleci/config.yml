@@ -16,7 +16,7 @@ jobs:
           name: Run Tests
           command: npm test
       - persist_to_workspace:
-          root: .  # Змінено з "roots" на "root"
+          root: . 
           paths:
             - .
 
