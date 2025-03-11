@@ -1,4 +1,20 @@
 jobs:
+  build-and-test:
+    docker:
+      - image: cimg/node:18.16
+    steps:
+      - checkout
+      - run:
+          name: Install Dependencies
+          command: npm install
+      - run:
+          name: Run Tests
+          command: npm test
+      - persist_to_workspace:
+          roots: .
+          paths:
+            - .
+
   deploy-staging:
     docker:
       - image: cimg/node:18.16
@@ -47,7 +63,7 @@ workflows:
               only: staging
       - deploy-production:
           requires:
-            - deploy-staging
+            - build-and-test
           filters:
             branches:
               only: main
