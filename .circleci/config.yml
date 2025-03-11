@@ -38,12 +38,16 @@ jobs:
 workflows:
   ci-cd-pipeline:
     jobs:
-      - build-and-test 
+      - build-and-test
       - deploy-staging:
+          requires:
+            - build-and-test
           filters:
             branches:
               only: staging
       - deploy-production:
+          requires:
+            - deploy-staging
           filters:
             branches:
               only: main
