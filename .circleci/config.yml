@@ -1,8 +1,7 @@
 version: 2.1
 
 orbs:
-  aws-cli: circleci/aws-cli@3.1.5
-  aws-eb: circleci/aws-elastic-beanstalk@2.0.1
+  aws-cli: circleci/aws-cli@3.1.1
 
 jobs:
   build-and-test:
@@ -11,16 +10,13 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Встановлення залежностей
+          name: Install Dependencies
           command: npm install
       - run:
-          name: Запуск тестів
+          name: Run Tests
           command: npm test
-      - run:
-          name: Побудова додатку
-          command: npm run build || echo "Немає кроку побудови"
       - persist_to_workspace:
-          root: .
+          root: . 
           paths:
             - .
 
@@ -30,16 +26,19 @@ jobs:
     steps:
       - attach_workspace:
           at: .
-      - aws-cli/setup:
-          aws-access-key-id: AWS_ACCESS_KEY_ID
-          aws-secret-access-key: AWS_SECRET_ACCESS_KEY
-          aws-region: AWS_REGION
-      - aws-eb/setup
+      - aws-cli/setup
       - run:
-          name: Розгортання на Staging
+          name: Install EB CLI
           command: |
-            eb init my-app-staging -p node.js --region us-east-1
-            eb deploy my-app-staging-env
+            sudo apt-get update && sudo apt-get install -y python3-pip
+            pip3 install awsebcli --upgrade --user
+            export PATH=~/.local/bin:$PATH
+      - run:
+          name: Deploy to Staging
+          command: |
+            export AWS_DEFAULT_REGION=$AWS_REGION
+            eb init ca-app -p node.js --region eu-north-1 || echo "Initialization already performed"
+            eb deploy devops-ca-env
 
   deploy-production:
     docker:
@@ -47,16 +46,19 @@ jobs:
     steps:
       - attach_workspace:
           at: .
-      - aws-cli/setup:
-          aws-access-key-id: AWS_ACCESS_KEY_ID
-          aws-secret-access-key: AWS_SECRET_ACCESS_KEY
-          aws-region: AWS_REGION
-      - aws-eb/setup
+      - aws-cli/setup
       - run:
-          name: Розгортання на Production
+          name: Install EB CLI
           command: |
-            eb init my-app-prod -p node.js --region us-east-1
-            eb deploy my-app-prod-env
+            sudo apt-get update && sudo apt-get install -y python3-pip
+            pip3 install awsebcli --upgrade --user
+            export PATH=~/.local/bin:$PATH
+      - run:
+          name: Deploy to Production
+          command: |
+            export AWS_DEFAULT_REGION=$AWS_REGION
+            eb init ca-app -p node.js --region eu-north-1 || echo "Initialization already performed"
+            eb deploy devops-ca-env
 
 workflows:
   ci-cd-pipeline:
@@ -70,7 +72,7 @@ workflows:
               only: staging
       - deploy-production:
           requires:
-            - deploy-staging
+            - build-and-test
           filters:
             branches:
               only: main
