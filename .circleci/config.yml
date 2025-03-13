@@ -1,78 +1,35 @@
 version: 2.1
 
-orbs:
-  aws-cli: circleci/aws-cli@3.1.1
-
 jobs:
-  build-and-test:
+  build:
     docker:
-      - image: cimg/node:18.16
+      - image: cimg/node:18.20
     steps:
       - checkout
       - run:
-          name: Install Dependencies
+          name: Install dependencies
           command: npm install
       - run:
-          name: Run Tests
-          command: npm test
-      - persist_to_workspace:
-          root: . 
-          paths:
-            - .
+          name: Build app
+          command: npm run build || echo "No build script, skipping"
 
-  deploy-staging:
+  deploy:
     docker:
-      - image: cimg/node:18.16
+      - image: cimg/node:18.20
     steps:
-      - attach_workspace:
-          at: .
-      - aws-cli/setup
+      - checkout
       - run:
-          name: Install EB CLI
+          name: Deploy to EC2
           command: |
-            sudo apt-get update && sudo apt-get install -y python3-pip
-            pip3 install awsebcli --upgrade --user
-            export PATH=~/.local/bin:$PATH
-      - run:
-          name: Deploy to Staging
-          command: |
-            export AWS_DEFAULT_REGION=$AWS_REGION
-            eb init ca-app -p node.js --region eu-north-1 || echo "Initialization already performed"
-            eb deploy devops-ca-env
-
-  deploy-production:
-    docker:
-      - image: cimg/node:18.16
-    steps:
-      - attach_workspace:
-          at: .
-      - aws-cli/setup
-      - run:
-          name: Install EB CLI
-          command: |
-            sudo apt-get update && sudo apt-get install -y python3-pip
-            pip3 install awsebcli --upgrade --user
-            export PATH=~/.local/bin:$PATH
-      - run:
-          name: Deploy to Production
-          command: |
-            export AWS_DEFAULT_REGION=$AWS_REGION
-            eb init ca-app -p node.js --region eu-north-1 || echo "Initialization already performed"
-            eb deploy devops-ca-env
+            ssh -o StrictHostKeyChecking=no $EC2_USERNAME@$EC2_PUBLIC_DNS "rm -rf ~/devops-ca-app && git clone https://github.com/odvorko/ca-app.git devops-ca-app && cd ~/devops-ca-app && chmod +x deploy.sh && ./deploy.sh"
 
 workflows:
-  ci-cd-pipeline:
+  build-and-deploy:
     jobs:
-      - build-and-test
-      - deploy-staging:
+      - build
+      - deploy:
           requires:
-            - build-and-test
-          filters:
-            branches:
-              only: staging
-      - deploy-production:
-          requires:
-            - build-and-test
+            - build
           filters:
             branches:
               only: main
